@@ -39,19 +39,19 @@ export default async (request) => {
       history = [];
     }
 
-    const contents = [];
-
-    contents.push({
-      role: "user",
-      parts: [
-        {
-          text: systemPrompt
-        }
-      ]
-    });
+    const contents = [
+      {
+        role: "user",
+        parts: [
+          {
+            text: systemPrompt
+          }
+        ]
+      }
+    ];
 
     if (Array.isArray(history)) {
-      for (const item of history.slice(-20)) {
+      for (const item of history.slice(-10)) {
         if (
           item &&
           (item.role === "user" ||
@@ -67,7 +67,7 @@ export default async (request) => {
               {
                 text: String(item.content).slice(
                   0,
-                  12000
+                  8000
                 )
               }
             ]
@@ -85,93 +85,75 @@ export default async (request) => {
       ]
     });
 
-    // Tenta os modelos em sequência.
-    const models = [
-      "gemini-3.6-flash",
-      "gemini-3.6-flash-lite"
-    ];
+    const controller = new AbortController();
 
-    let lastError = null;
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 25000);
 
-    for (const model of models) {
-      try {
-        const response = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/" +
-            model +
-            ":generateContent?key=" +
-            encodeURIComponent(apiKey),
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              contents
-            })
-          }
-        );
+    let response;
 
-        const data = await response.json();
-
-        if (response.ok) {
-          const text =
-            data?.candidates?.[0]?.content?.parts
-              ?.map((part) => part.text || "")
-              .join("") ||
-            "Não consegui gerar uma resposta.";
-
-          return json({
-            text,
-            model
-          });
-        }
-
-        lastError =
-          data?.error?.message ||
-          "Erro na API do Gemini.";
-
-        // Se for erro de limite ou alta demanda,
-        // tenta automaticamente o próximo modelo.
-        if (
-          response.status === 429 ||
-          response.status === 503 ||
-          /high demand|quota|rate limit|unavailable/i.test(
-            lastError
-          )
-        ) {
-          continue;
-        }
-
-        return json(
-          {
-            error: lastError
+    try {
+      response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
+          encodeURIComponent(apiKey),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
           },
-          response.status
-        );
-      } catch (error) {
-        lastError =
-          error?.message ||
-          "Erro ao conectar ao Gemini.";
-      }
+          body: JSON.stringify({
+            contents
+          }),
+          signal: controller.signal
+        }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return json(
+        {
+          error:
+            data?.error?.message ||
+            "Erro na API do Gemini."
+        },
+        response.status
+      );
+    }
+
+    const text =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("") ||
+      "Não consegui gerar uma resposta.";
+
+    return json({
+      text,
+      model: "gemini-3.6-flash"
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    if (error?.name === "AbortError") {
+      return json(
+        {
+          error:
+            "O Gemini demorou muito para responder. Tente novamente em alguns segundos."
+        },
+        504
+      );
     }
 
     return json(
       {
         error:
-          lastError ||
-          "Os modelos do Gemini estão temporariamente indisponíveis. Tente novamente."
-      },
-      503
-    );
-
-  } catch (error) {
-    console.error(error);
-
-    return json(
-      {
-        error:
           error?.message ||
-          "Erro interno na função da Netlify."
+          "Erro interno na função do Nexus AI."
       },
       500
     );
