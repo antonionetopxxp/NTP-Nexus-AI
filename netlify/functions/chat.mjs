@@ -1,4 +1,3 @@
-
 ```js
 export default async (request) => {
   if (request.method !== "POST") {
@@ -30,15 +29,15 @@ export default async (request) => {
 
     let history = [];
 
-    try {
-      const historyValue = String(form.get("history") || "[]");
+    const historyValue = String(form.get("history") || "[]");
 
-      if (historyValue.trim()) {
+    if (historyValue.trim()) {
+      try {
         history = JSON.parse(historyValue);
+      } catch (error) {
+        console.warn("Histórico inválido. Continuando sem histórico.");
+        history = [];
       }
-    } catch (error) {
-      console.warn("Histórico JSON inválido. Continuando sem histórico.");
-      history = [];
     }
 
     const contents = [];
@@ -88,13 +87,10 @@ export default async (request) => {
             }
           ]
         },
-        contents
+        contents: contents
       })
     });
 
-    // Não usar response.json() diretamente.
-    // Primeiro pegamos o texto para evitar:
-    // "Unexpected end of JSON input"
     const rawText = await response.text();
 
     let data = {};
@@ -102,13 +98,12 @@ export default async (request) => {
     if (rawText.trim()) {
       try {
         data = JSON.parse(rawText);
-      } catch (parseError) {
-        console.error("Resposta não-JSON do Gemini:", rawText);
+      } catch (error) {
+        console.error("Resposta inválida do Gemini:", rawText);
 
         return json(
           {
-            error:
-              "A API do Gemini retornou uma resposta inválida.",
+            error: "A API do Gemini retornou uma resposta inválida.",
             details: rawText.slice(0, 1000)
           },
           502
@@ -117,11 +112,16 @@ export default async (request) => {
     }
 
     if (!response.ok) {
+      const apiError =
+        data &&
+        data.error &&
+        data.error.message
+          ? data.error.message
+          : "Erro na API do Gemini. Código HTTP: " + response.status;
+
       return json(
         {
-          error:
-            data?.error?.message ||
-            `Erro na API do Gemini. Código HTTP: ${response.status}`,
+          error: apiError,
           status: response.status
         },
         response.status
@@ -129,14 +129,21 @@ export default async (request) => {
     }
 
     const text =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((part) => part?.text || "")
-        .join("")
-        .trim() ||
-      "Não consegui gerar uma resposta.";
+      data &&
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts
+        ? data.candidates[0].content.parts
+            .map(function (part) {
+              return part && part.text ? part.text : "";
+            })
+            .join("")
+            .trim()
+        : "";
 
     return json({
-      text
+      text: text || "Não consegui gerar uma resposta."
     });
   } catch (error) {
     console.error("Erro na função chat:", error);
@@ -144,17 +151,22 @@ export default async (request) => {
     return json(
       {
         error:
-          error?.message ||
-          "Erro interno na função da Netlify."
+          error && error.message
+            ? error.message
+            : "Erro interno na função da Netlify."
       },
       500
     );
   }
 };
 
-function json(data, status = 200) {
+function json(data, status) {
+  if (status === undefined) {
+    status = 200;
+  }
+
   return new Response(JSON.stringify(data), {
-    status,
+    status: status,
     headers: {
       "Content-Type": "application/json; charset=utf-8"
     }
