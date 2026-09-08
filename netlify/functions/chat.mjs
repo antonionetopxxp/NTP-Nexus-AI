@@ -1,3 +1,5 @@
+
+```js
 export default async (request) => {
   if (request.method !== "POST") {
     return json({ error: "Método não permitido." }, 405);
@@ -6,7 +8,10 @@ export default async (request) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return json({ error: "GEMINI_API_KEY não configurada na Netlify." }, 500);
+    return json(
+      { error: "GEMINI_API_KEY não configurada na Netlify." },
+      500
+    );
   }
 
   try {
@@ -20,27 +25,23 @@ export default async (request) => {
 
     const systemPrompt = String(
       form.get("systemPrompt") ||
-      "Você é o Nexus AI, um assistente de inteligência artificial útil, preciso e objetivo. Responda em português do Brasil."
+        "Você é o Nexus AI, um assistente de inteligência artificial útil, preciso e objetivo. Responda em português do Brasil."
     );
 
     let history = [];
 
     try {
-      history = JSON.parse(String(form.get("history") || "[]"));
-    } catch {
+      const historyValue = String(form.get("history") || "[]");
+
+      if (historyValue.trim()) {
+        history = JSON.parse(historyValue);
+      }
+    } catch (error) {
+      console.warn("Histórico JSON inválido. Continuando sem histórico.");
       history = [];
     }
 
     const contents = [];
-
-    contents.push({
-      role: "user",
-      parts: [
-        {
-          text: systemPrompt
-        }
-      ]
-    });
 
     if (Array.isArray(history)) {
       for (const item of history.slice(-20)) {
@@ -70,28 +71,58 @@ export default async (request) => {
       ]
     });
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/models/gemini-3.6-flash:generateContent?key=" +
-        encodeURIComponent(apiKey),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents
-        })
-      }
-    );
+    const url =
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
+      encodeURIComponent(apiKey);
 
-    const data = await response.json();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [
+            {
+              text: systemPrompt
+            }
+          ]
+        },
+        contents
+      })
+    });
+
+    // Não usar response.json() diretamente.
+    // Primeiro pegamos o texto para evitar:
+    // "Unexpected end of JSON input"
+    const rawText = await response.text();
+
+    let data = {};
+
+    if (rawText.trim()) {
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error("Resposta não-JSON do Gemini:", rawText);
+
+        return json(
+          {
+            error:
+              "A API do Gemini retornou uma resposta inválida.",
+            details: rawText.slice(0, 1000)
+          },
+          502
+        );
+      }
+    }
 
     if (!response.ok) {
       return json(
         {
           error:
             data?.error?.message ||
-            "Erro na API do Gemini."
+            `Erro na API do Gemini. Código HTTP: ${response.status}`,
+          status: response.status
         },
         response.status
       );
@@ -99,15 +130,16 @@ export default async (request) => {
 
     const text =
       data?.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || "")
-        .join("") ||
+        ?.map((part) => part?.text || "")
+        .join("")
+        .trim() ||
       "Não consegui gerar uma resposta.";
 
     return json({
       text
     });
   } catch (error) {
-    console.error(error);
+    console.error("Erro na função chat:", error);
 
     return json(
       {
@@ -124,7 +156,7 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=utf-8"
+      "Content-Type": "application/json; charset=utf-8"
     }
   });
 }
@@ -132,3 +164,4 @@ function json(data, status = 200) {
 export const config = {
   path: "/.netlify/functions/chat"
 };
+```
