@@ -92,34 +92,101 @@ function setThinking(on){
 }
 
 async function send(){
-  const message=promptEl.value.trim();
-  if(!message && selectedFiles.length===0)return;
-  if(!activeChatId)newChat();
+  const message = promptEl.value.trim();
 
-  const chat=currentChat();
-  const history=chat.messages.slice(-20);
-  addMessage("user", message || `Enviei ${selectedFiles.length} arquivo(s) para análise.`);
-  promptEl.value=""; autoResize(); setThinking(true); sendBtn.disabled=true;
+  if(!message && selectedFiles.length === 0) return;
 
-  const fd=new FormData();
-  fd.append("message",message);
-  fd.append("history",JSON.stringify(history));
-  fd.append("webSearch",String(webSearchEl.checked));
-  fd.append("systemPrompt",settings.systemPrompt || "");
-  selectedFiles.forEach(f=>fd.append("files",f));
+  if(!activeChatId) newChat();
 
-  try{
-    const r=await fetch("/.netlify/functions/chat",{method:"POST",body:fd});
-    const data=await r.json();
-    if(!r.ok) throw new Error(data.error||"Erro na requisição");
+  const chat = currentChat();
+  const history = chat.messages.slice(-20);
+
+  addMessage(
+    "user",
+    message || `Enviei ${selectedFiles.length} arquivo(s) para análise.`
+  );
+
+  promptEl.value = "";
+  autoResize();
+  setThinking(true);
+  sendBtn.disabled = true;
+
+  const fd = new FormData();
+
+  fd.append("message", message);
+  fd.append("history", JSON.stringify(history));
+  fd.append("webSearch", String(webSearchEl.checked));
+  fd.append("systemPrompt", settings.systemPrompt || "");
+
+  selectedFiles.forEach(file => {
+    fd.append("files", file);
+  });
+
+  try {
+    const response = await fetch("/.netlify/functions/chat", {
+      method: "POST",
+      body: fd
+    });
+
+    // Lê como texto primeiro para evitar:
+    // Unexpected end of JSON input
+    const raw = await response.text();
+
+    let data = {};
+
+    if(raw.trim()){
+      try {
+        data = JSON.parse(raw);
+      } catch(parseError) {
+        console.error("Resposta não-JSON do servidor:", raw);
+
+        throw new Error(
+          `Servidor retornou uma resposta inválida (HTTP ${response.status}).`
+        );
+      }
+    }
+
+    if(!response.ok){
+      throw new Error(
+        data.error ||
+        data.message ||
+        `Erro HTTP ${response.status}`
+      );
+    }
+
+    if(!data.text){
+      console.error("Resposta do servidor:", data);
+
+      throw new Error(
+        "A IA não retornou nenhum texto."
+      );
+    }
+
     setThinking(false);
-    addMessage("assistant",data.text);
-    if(autoSpeakEl.checked)speak(data.text);
-  }catch(err){
+
+    addMessage("assistant", data.text);
+
+    if(autoSpeakEl.checked){
+      speak(data.text);
+    }
+
+  } catch(err) {
+
+    console.error("Erro ao conversar com Nexus AI:", err);
+
     setThinking(false);
-    addMessage("assistant","Erro: "+err.message);
-  }finally{
-    selectedFiles=[];renderAttachments();sendBtn.disabled=false;
+
+    addMessage(
+      "assistant",
+      "Erro: " + (err.message || "Não foi possível conectar ao servidor.")
+    );
+
+  } finally {
+
+    selectedFiles = [];
+    renderAttachments();
+    sendBtn.disabled = false;
+
   }
 }
 
