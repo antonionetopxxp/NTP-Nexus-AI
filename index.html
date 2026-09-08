@@ -7,99 +7,355 @@
   <title>Nexus AI</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+
   <div class="app-shell">
+
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
+
       <div class="brand">
         <div class="brand-mark">N</div>
+
         <div>
           <strong>Nexus AI</strong>
           <span>Assistente inteligente</span>
         </div>
       </div>
 
-      <button class="new-chat" id="newChat">＋ Nova conversa</button>
+      <button class="new-chat" id="newChat">
+        ＋ Nova conversa
+      </button>
 
-      <div class="section-title">Conversas</div>
+      <div class="section-title">
+        Conversas
+      </div>
+
       <div id="chatList" class="chat-list"></div>
 
       <div class="sidebar-bottom">
-        <button class="side-btn" id="settingsBtn">⚙ Configurações</button>
-        <button class="side-btn" id="clearAllBtn">🗑 Limpar histórico</button>
+
+        <button class="side-btn" id="settingsBtn">
+          ⚙ Configurações
+        </button>
+
+        <button class="side-btn" id="clearAllBtn">
+          🗑 Limpar histórico
+        </button>
+
       </div>
+
     </aside>
 
+
+    <!-- ÁREA PRINCIPAL -->
     <main class="main">
+
+      <!-- TOPO -->
       <header class="topbar">
-        <button class="icon-btn mobile-only" id="menuBtn">☰</button>
+
+        <button
+          class="icon-btn mobile-only"
+          id="menuBtn"
+          type="button"
+        >
+          ☰
+        </button>
+
         <div>
           <strong>Nexus AI</strong>
-          <small id="status">Verificando conexão...</small>
+          <small id="status">
+            Verificando conexão...
+          </small>
         </div>
+
         <div class="top-actions">
+
           <label class="toggle">
             <input type="checkbox" id="webSearch" />
             <span></span>
             Web
           </label>
-          <button class="icon-btn" id="themeBtn" title="Alternar tema">◐</button>
+
+          <button
+            class="icon-btn"
+            id="themeBtn"
+            title="Alternar tema"
+            type="button"
+          >
+            ◐
+          </button>
+
         </div>
+
       </header>
 
+
+      <!-- ÁREA DE MENSAGENS -->
       <section class="messages" id="messages">
+
         <div class="welcome" id="welcome">
-          <div class="orb">✦</div>
-          <h1>Como posso ajudar?</h1>
-          <p>Converse, envie imagens e documentos, use sua voz ou ative a busca na web.</p>
-          <div class="suggestions">
-            <button data-prompt="Crie um plano de negócios simples para minha ideia.">Plano de negócios</button>
-            <button data-prompt="Explique este assunto de forma simples e com exemplos.">Explicar um assunto</button>
-            <button data-prompt="Crie um site moderno em HTML, CSS e JavaScript.">Criar um site</button>
-            <button data-prompt="Analise o arquivo que vou enviar e faça um resumo.">Analisar arquivo</button>
+
+          <div class="orb">
+            ✦
           </div>
+
+          <h1>
+            Como posso ajudar?
+          </h1>
+
+          <p>
+            Converse, crie imagens, gere vídeos,
+            envie arquivos ou use sua voz.
+          </p>
+
+
+          <!-- MODOS DO NEXUS -->
+          <div class="ai-modes">
+
+            <button
+              class="mode-btn active"
+              data-mode="chat"
+              type="button"
+            >
+              💬
+              <span>Chat</span>
+            </button>
+
+            <button
+              class="mode-btn"
+              data-mode="image"
+              type="button"
+            >
+              🖼️
+              <span>Imagem</span>
+            </button>
+
+            <button
+              class="mode-btn"
+              data-mode="video"
+              type="button"
+            >
+              🎬
+              <span>Vídeo</span>
+            </button>
+
+          </div>
+
+
+          <!-- SUGESTÕES -->
+          <div class="suggestions">
+
+            <button
+              data-prompt="Crie um plano de negócios simples para minha ideia."
+              type="button"
+            >
+              Plano de negócios
+            </button>
+
+            <button
+              data-prompt="Explique este assunto de forma simples e com exemplos."
+              type="button"
+            >
+              Explicar um assunto
+            </button>
+
+            <button
+              data-prompt="Crie um site moderno em HTML, CSS e JavaScript."
+              type="button"
+            >
+              Criar um site
+            </button>
+
+            <button
+              data-prompt="Analise o arquivo que vou enviar e faça um resumo."
+              type="button"
+            >
+              Analisar arquivo
+            </button>
+
+          </div>
+
         </div>
+
       </section>
 
+
+      <!-- COMPOSITOR -->
       <section class="composer-wrap">
-        <div id="attachments" class="attachments"></div>
+
+        <!-- MODO ATUAL -->
+        <div
+          id="modeIndicator"
+          class="mode-indicator"
+        >
+          💬 Modo Chat
+        </div>
+
+
+        <!-- ANEXOS -->
+        <div
+          id="attachments"
+          class="attachments"
+        ></div>
+
+
+        <!-- CAIXA DE TEXTO -->
         <div class="composer">
-          <input type="file" id="fileInput" multiple hidden
-            accept="image/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.doc,.docx" />
-          <button class="tool-btn" id="attachBtn" title="Anexar arquivo">＋</button>
-          <textarea id="prompt" rows="1" placeholder="Mensagem para Nexus AI..."></textarea>
-          <button class="tool-btn" id="micBtn" title="Falar">🎙</button>
-          <button class="send-btn" id="sendBtn" title="Enviar">➤</button>
+
+          <input
+            type="file"
+            id="fileInput"
+            multiple
+            hidden
+            accept="image/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.doc,.docx"
+          />
+
+
+          <button
+            class="tool-btn"
+            id="attachBtn"
+            title="Anexar arquivo"
+            type="button"
+          >
+            ＋
+          </button>
+
+
+          <textarea
+            id="prompt"
+            rows="1"
+            placeholder="Mensagem para Nexus AI..."
+          ></textarea>
+
+
+          <button
+            class="tool-btn"
+            id="micBtn"
+            title="Falar"
+            type="button"
+          >
+            🎙
+          </button>
+
+
+          <button
+            class="send-btn"
+            id="sendBtn"
+            title="Enviar"
+            type="button"
+          >
+            ➤
+          </button>
+
         </div>
+
+
+        <!-- RODAPÉ -->
         <div class="composer-footer">
-          <span>Enter envia · Shift+Enter quebra linha</span>
-          <label><input type="checkbox" id="autoSpeak" /> Ler respostas</label>
+
+          <span>
+            Enter envia · Shift+Enter quebra linha
+          </span>
+
+          <label>
+            <input
+              type="checkbox"
+              id="autoSpeak"
+            />
+            Ler respostas
+          </label>
+
         </div>
+
       </section>
+
     </main>
+
   </div>
 
+
+  <!-- CONFIGURAÇÕES -->
   <dialog id="settingsDialog">
-    <form method="dialog" class="settings-card">
+
+    <form
+      method="dialog"
+      class="settings-card"
+    >
+
       <div class="dialog-header">
-        <h2>Configurações</h2>
-        <button class="icon-btn">✕</button>
+
+        <h2>
+          Configurações
+        </h2>
+
+        <button
+          class="icon-btn"
+          type="submit"
+        >
+          ✕
+        </button>
+
       </div>
+
+
       <label>
+
         Personalidade / instruções
-        <textarea id="systemPrompt" rows="6"
-          placeholder="Ex.: Você é meu assistente de negócios e tecnologia..."></textarea>
+
+        <textarea
+          id="systemPrompt"
+          rows="6"
+          placeholder="Ex.: Você é meu assistente de negócios e tecnologia..."
+        ></textarea>
+
       </label>
+
+
       <label>
+
         Nome do assistente
-        <input id="assistantName" value="Nexus AI" />
+
+        <input
+          id="assistantName"
+          value="Nexus AI"
+        />
+
       </label>
+
+
       <div class="dialog-actions">
-        <button value="cancel" class="secondary">Cancelar</button>
-        <button value="default" id="saveSettings" class="primary">Salvar</button>
+
+        <button
+          value="cancel"
+          class="secondary"
+          type="submit"
+        >
+          Cancelar
+        </button>
+
+        <button
+          value="default"
+          id="saveSettings"
+          class="primary"
+          type="submit"
+        >
+          Salvar
+        </button>
+
       </div>
+
     </form>
+
   </dialog>
 
-  <script src="app.js" type="module"></script>
+
+  <!-- JAVASCRIPT -->
+  <script
+    src="app.js"
+    type="module"
+  ></script>
+
 </body>
 </html>
