@@ -7,9 +7,7 @@ export default async (request) => {
 
   if (!apiKey) {
     return json(
-      {
-        error: "GEMINI_API_KEY não configurada na Netlify."
-      },
+      { error: "GEMINI_API_KEY não configurada na Netlify." },
       500
     );
   }
@@ -20,12 +18,7 @@ export default async (request) => {
     const message = String(form.get("message") || "").trim();
 
     if (!message) {
-      return json(
-        {
-          error: "Digite uma mensagem."
-        },
-        400
-      );
+      return json({ error: "Digite uma mensagem." }, 400);
     }
 
     const systemPrompt = String(
@@ -35,24 +28,20 @@ export default async (request) => {
 
     let history = [];
 
-    const historyValue = String(
-      form.get("history") || "[]"
-    );
-
     try {
-      const parsed = JSON.parse(historyValue);
+      const value = String(form.get("history") || "[]");
+      const parsed = JSON.parse(value);
 
       if (Array.isArray(parsed)) {
-        history = parsed;
+        history = parsed.slice(-6);
       }
-    } catch (error) {
-      console.warn("Histórico inválido.");
+    } catch {
       history = [];
     }
 
     const contents = [];
 
-    for (const item of history.slice(-20)) {
+    for (const item of history) {
       if (
         item &&
         (item.role === "user" || item.role === "assistant") &&
@@ -62,7 +51,7 @@ export default async (request) => {
           role: item.role === "assistant" ? "model" : "user",
           parts: [
             {
-              text: String(item.content).slice(0, 12000)
+              text: String(item.content).slice(0, 6000)
             }
           ]
         });
@@ -73,15 +62,13 @@ export default async (request) => {
       role: "user",
       parts: [
         {
-          text: message
+          text: message.slice(0, 12000)
         }
       ]
     });
 
     const url =
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
-
-    console.log("Enviando requisição para Gemini...");
 
     const response = await fetch(url, {
       method: "POST",
@@ -93,53 +80,61 @@ export default async (request) => {
         systemInstruction: {
           parts: [
             {
-              text: systemPrompt
+              text: systemPrompt.slice(0, 6000)
             }
           ]
         },
-        contents
+
+        contents,
+
+        generationConfig: {
+          thinkingConfig: {
+            thinkingLevel: "low"
+          },
+          maxOutputTokens: 1000
+        }
       })
     });
 
     const rawText = await response.text();
 
-    console.log(
-      "Gemini HTTP:",
-      response.status
-    );
+    console.log("Gemini HTTP:", response.status);
 
-    console.log(
-      "Gemini resposta:",
-      rawText.slice(0, 2000)
-    );
-
-    let data = {};
-
-    if (rawText.trim()) {
-      try {
-        data = JSON.parse(rawText);
-      } catch (error) {
-        return json(
-          {
-            error: "O Gemini retornou uma resposta que não é JSON.",
-            status: response.status,
-            details: rawText.slice(0, 2000)
-          },
-          502
-        );
-      }
+    if (!rawText.trim()) {
+      return json(
+        {
+          error: "O Gemini não retornou nenhuma resposta.",
+          status: response.status
+        },
+        502
+      );
     }
 
-    if (!response.ok) {
-      const apiError =
-        data?.error?.message ||
-        "Erro na API do Gemini.";
+    let data;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error("Resposta não JSON:", rawText.slice(0, 1000));
 
       return json(
         {
-          error: apiError,
-          status: response.status,
-          details: data?.error || null
+          error: "Resposta inválida recebida do Gemini.",
+          status: response.status
+        },
+        502
+      );
+    }
+
+    if (!response.ok) {
+      console.error("Erro Gemini:", JSON.stringify(data));
+
+      return json(
+        {
+          error:
+            data?.error?.message ||
+            "Erro na API do Gemini.",
+          status: response.status
         },
         response.status
       );
@@ -159,8 +154,7 @@ export default async (request) => {
 
       return json(
         {
-          error: "O Gemini não retornou texto.",
-          details: data
+          error: "O Gemini não retornou texto."
         },
         502
       );
@@ -171,16 +165,13 @@ export default async (request) => {
     });
 
   } catch (error) {
-    console.error(
-      "Erro na função chat:",
-      error
-    );
+    console.error("Erro na função:", error);
 
     return json(
       {
         error:
           error?.message ||
-          "Erro interno na função da Netlify."
+          "Erro interno na função."
       },
       500
     );
