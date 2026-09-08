@@ -1,13 +1,12 @@
 export default async (request) => {
   return new Response(
     JSON.stringify({
-      ok: true,
-      message: "Nexus AI Function funcionando!"
+      text: "Olá! A Function do Nexus AI está funcionando corretamente."
     }),
     {
       status: 200,
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json; charset=utf-8"
       }
     }
   );
