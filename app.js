@@ -1011,26 +1011,72 @@ async function createVideo(prompt) {
       );
 
     }
-
-  }
-
-  catch (err) {
-
-    console.error(
-      "Erro ao criar vídeo:",
-      err
+async function createVideo(prompt) {
+  try {
+    addMessage(
+      "assistant",
+      "🎬 Iniciando geração do vídeo..."
     );
 
-    setThinking(false);
+    const response = await fetch(
+      "/.netlify/functions/video",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          prompt,
+
+          duration: 5,
+
+          ratio: "1280:768"
+        })
+      }
+    );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        "Erro ao iniciar o vídeo."
+      );
+    }
+
+    if (!data.taskId) {
+      throw new Error(
+        "O Runway não retornou o ID da tarefa."
+      );
+    }
+
+    const taskId =
+      data.taskId;
 
     addMessage(
       "assistant",
-      "🎬 " +
-      (
-        err.message ||
-        "O criador de vídeos ainda não está configurado."
-      )
+      "⏳ O vídeo está sendo criado pelo Runway..."
     );
+
+    await waitForVideo(taskId);
+
+  } catch (error) {
+    console.error(
+      "Erro createVideo:",
+      error
+    );
+
+    addMessage(
+      "assistant",
+      "❌ Erro ao gerar vídeo: " +
+        error.message
+    );
+  }
+}
 
   }
 
